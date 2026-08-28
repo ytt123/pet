@@ -1,0 +1,14 @@
+# PyInstaller 构建产物
+build/
+dist/
+*.pyc
+__pycache__/
+
+# 系统文件
+.DS_Store
+
+# 说明: assets/ 需要提交(打包时用到);pet.spec 需要提交。
+# 原始视频 video*.mp4 / source.png 体积较大、打包时不需要,
+# 如需精简仓库可自行取消下面注释忽略它们:
+# video*.mp4
+# source.png

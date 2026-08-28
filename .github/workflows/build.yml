@@ -1,0 +1,59 @@
+name: Build SpiderPet
+
+# 在云端同时构建 Windows(.exe) 和 macOS(.app),无需自己有对应的电脑。
+# 触发方式:
+#   - 手动: 打开 GitHub 仓库 -> Actions -> Build SpiderPet -> Run workflow
+#   - 或推一个 tag (git tag v1.0 && git push origin v1.0)
+# 构建完成后在该次运行页面底部 "Artifacts" 下载 zip。
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: SpiderPet-Windows
+            path: dist/SpiderPet.exe
+          - os: macos-latest
+            artifact: SpiderPet-macOS
+            path: dist/SpiderPet.app
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6 pyinstaller
+
+      - name: Build
+        run: python -m PyInstaller --noconfirm --clean pet.spec
+
+      - name: Zip macOS .app
+        if: matrix.os == 'macos-latest'
+        run: cd dist && zip -r -y SpiderPet-macOS.zip SpiderPet.app
+
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/SpiderPet.exe
+
+      - name: Upload artifact (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/SpiderPet-macOS.zip
