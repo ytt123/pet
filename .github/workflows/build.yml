@@ -2,15 +2,21 @@ name: Build SpiderPet
 
 # 在云端同时构建 Windows(.exe) 和 macOS(.app),无需自己有对应的电脑。
 # 触发方式:
-#   - 手动: 打开 GitHub 仓库 -> Actions -> Build SpiderPet -> Run workflow
-#   - 或推一个 tag (git tag v1.0 && git push origin v1.0)
-# 构建完成后在该次运行页面底部 "Artifacts" 下载 zip。
+#   - 手动: 仓库 -> Actions -> Build SpiderPet -> Run workflow
+#           (手动触发只产出 Artifacts,供自己下载调试)
+#   - 推 tag: git tag v1.0 && git push origin v1.0
+#           (推 tag 会额外自动发布 Release,把 exe / app.zip 挂上去,
+#            Release 链接是公开直链、任何人无需登录即可下载、永久有效)
+# 注意: 想让别人无需 GitHub 账号也能下载,仓库需设为 Public。
 
 on:
   workflow_dispatch:
   push:
     tags:
       - "v*"
+
+permissions:
+  contents: write   # 发布 Release 需要写权限
 
 jobs:
   build:
@@ -20,10 +26,10 @@ jobs:
         include:
           - os: windows-latest
             artifact: SpiderPet-Windows
-            path: dist/SpiderPet.exe
+            asset: dist/SpiderPet.exe
           - os: macos-latest
             artifact: SpiderPet-macOS
-            path: dist/SpiderPet.app
+            asset: dist/SpiderPet-macOS.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -44,16 +50,18 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: cd dist && zip -r -y SpiderPet-macOS.zip SpiderPet.app
 
-      - name: Upload artifact (Windows)
-        if: matrix.os == 'windows-latest'
+      # 手动/每次运行:上传 Artifacts (登录用户可在运行页下载)
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/SpiderPet.exe
+          path: ${{ matrix.asset }}
 
-      - name: Upload artifact (macOS)
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
+      # 仅当推的是 tag 时:把产物挂到 Release (公开直链,任何人可下)
+      - name: Publish to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/SpiderPet-macOS.zip
+          files: ${{ matrix.asset }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
