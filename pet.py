@@ -115,6 +115,7 @@ class Pet(QWidget):
 
         self.idle_i = 0.0             # 待机/走路动画游标(浮点,乒乓循环)
         self.web_pos = None           # 吐丝进行中: web_seq 的下标;None 表示未吐丝
+        self.paused = False           # 暂停/不动:冻结动画与自动行为
 
         self.dragging = False
         self.drag_offset = QPoint()
@@ -161,6 +162,10 @@ class Pet(QWidget):
             self.behavior_ticks = random.randint(70, 170)
 
     def _tick(self):
+        # 暂停时:冻结在当前画面,不推进动画、不自动走动、不自发吐丝
+        if self.paused:
+            return
+
         self.phase += 0.18
 
         # 待机/走路动画游标推进(乒乓循环)
@@ -193,6 +198,8 @@ class Pet(QWidget):
         self.update()
 
     def _shoot_web(self):
+        if self.paused:
+            return
         if self.web_pos is None:
             self.web_pos = 0
 
@@ -342,13 +349,21 @@ class Pet(QWidget):
 
     def contextMenuEvent(self, e):
         menu = QMenu()
+        a_pause = QAction("继续" if self.paused else "暂停/不动", self)
+        a_pause.triggered.connect(self._toggle_pause)
         a_web = QAction("吐丝", self); a_web.triggered.connect(self._shoot_web)
+        a_web.setEnabled(not self.paused)
         a_flip = QAction("切换朝向", self); a_flip.triggered.connect(self._flip)
         a_center = QAction("回到屏幕中间", self); a_center.triggered.connect(self._center)
         a_quit = QAction("退出", self); a_quit.triggered.connect(QApplication.quit)
+        menu.addAction(a_pause); menu.addSeparator()
         menu.addAction(a_web); menu.addAction(a_flip); menu.addAction(a_center)
         menu.addSeparator(); menu.addAction(a_quit)
         menu.exec(e.globalPos())
+
+    def _toggle_pause(self):
+        self.paused = not self.paused
+        self.update()
 
     def _flip(self):
         self.facing_right = not self.facing_right
